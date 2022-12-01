@@ -1,42 +1,65 @@
+#![allow(unused)]
+
 use bevy::prelude::*;
-pub struct HelloPlugin;
+use player::PlayerPlugin;
 
-#[derive(Component)]
-struct Person;
+mod player;
 
-#[derive(Component)]
-struct Name(String);
+//Asset Contents
+const PLAYER_SPRITE: &str = "player_b_01.png";
+const PLAYER_SIZE: (f32, f32) = (144., 75.);
+const SPRITE_SCALE: f32 = 0.5; 
+
+//Resources
+#[derive(Resource)]
+pub struct WinSize {
+    pub w: f32,
+    pub h: f32,
+}
 
 #[derive(Resource)]
-struct GreetTimer(Timer);
-
-fn add_people(mut commands: Commands) {
-    commands.spawn((Person, Name("Elaina Proctor".to_string())));
-    commands.spawn((Person, Name("Renzo Hume".to_string())));
-    commands.spawn((Person, Name("Zayna Nieves".to_string())));
-}
-
-fn greet_people(
-    time: Res<Time>, mut timer: ResMut<GreetTimer>, query: Query<&Name, With<Person>>) {
-    
-    if timer.0.tick(time.delta()).just_finished() {
-        for name in query.iter() {
-            println!("hello {}!", name.0);
-        }
-    }
-}
-
-impl Plugin for HelloPlugin {
-    fn build(&self, app: &mut App) {
-        app.insert_resource(GreetTimer(Timer::from_seconds(2.0,TimerMode::Repeating)))
-            .add_startup_system(add_people)
-            .add_system(greet_people);
-    }
+struct GameTextures {
+    player: Handle<Image>,
 }
 
 fn main() {
     App::new()
+        .insert_resource(ClearColor(Color::rgb(0.04, 0.04, 0.04)))
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            window: WindowDescriptor {
+                title: "Rust Invaders!".to_string(),
+                width: 598.0,
+                height: 676.0,
+                ..Default::default()
+            },
+            ..Default::default()
+        }))
         .add_plugins(DefaultPlugins)
-        .add_plugin(HelloPlugin)
+        .add_plugin(PlayerPlugin)
+        .add_startup_system(setup_system)
         .run();
+}
+
+fn setup_system(
+    mut commands: Commands, 
+    asset_server: Res<AssetServer>,
+    mut windows: ResMut<Windows>,
+) {
+    //camera
+    commands.spawn(Camera2dBundle::default());
+
+    //capture window size
+    let window = windows.get_primary_mut().unwrap();
+    let (win_w, win_h) = (window.width(), window.height());
+
+
+    //add WinSize resource
+    let win_size = WinSize {w: win_w, h: win_h};
+    commands.insert_resource(win_size);
+
+    //add GameTextures resource
+    let game_textures = GameTextures {
+        player: asset_server.load(PLAYER_SPRITE),
+    };
+    commands.insert_resource(game_textures);
 }
